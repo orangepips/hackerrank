@@ -12,6 +12,11 @@ public class TestSolution extends TestBase {
     }
 
     @Test
+    public void Test1() {
+        test(1);
+    }
+
+    @Test
     public void Test1000() {
         test(1000);
     }

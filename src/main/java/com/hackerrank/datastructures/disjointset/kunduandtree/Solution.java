@@ -5,7 +5,8 @@ import java.util.*;
 
 // https://www.hackerrank.com/challenges/kundu-and-tree
 public class Solution {
-    static final int MAX = 10^9 + 7;
+    static final double MAX = Math.pow(10, 9) + 7;
+    static final char BLACK = 'b';
 
     public static void main(String... args) {
         System.out.println(execute(System.in));
@@ -24,180 +25,133 @@ public class Solution {
         Scanner scanner = new Scanner(inputStream);
 
         int n = scanner.nextInt();
-        Tree tree = new Tree(n);
+        DisjointSet disjointSet = new DisjointSet(n);
+        DisjointSet blackDisjointSet = new DisjointSet(n);
 
         for (int i = 0; i < n - 1; i++) {
             int start = scanner.nextInt();
             int end = scanner.nextInt();
+
+            disjointSet.union(start - 1, end - 1);
+
             char c = scanner.next().charAt(0);
-            tree.addColoredSegment(start, end, c);
+            if (c == BLACK) {
+                blackDisjointSet.union(start - 1, end - 1);
+            }
         }
-        tree.process();
 
-        int answer = tree.triplets.size();
-        // If the answer is greater than 10^9 + 7, print the answer modulo (%) 10^9 + 7.
-        if (answer > MAX) {
-            answer %= MAX;
+        int tripletCount = 0;
+
+        for (int first = 1; first <= n; first++) {
+            for (int middle = first + 1; middle <= n - 1; middle++) {
+                boolean isFirstSegmentAllBlack = (blackDisjointSet.find(first - 1) == blackDisjointSet.find(middle - 1));
+                if (isFirstSegmentAllBlack) continue;
+                for (int last = n; last > middle; last--) {
+                    boolean isSecondSegmentAllBlack = (blackDisjointSet.find(middle - 1) == blackDisjointSet.find(last - 1));
+                    boolean isThirdSegmentAllBlack = (blackDisjointSet.find(first - 1) == blackDisjointSet.find(last - 1));
+                    if (isThirdSegmentAllBlack || isSecondSegmentAllBlack) continue;
+                    tripletCount++;
+                }
+            }
         }
-        output.append(answer);
 
+        if (tripletCount > MAX) {
+            tripletCount %= MAX;
+        }
+
+        output.append(tripletCount);
         return output.toString();
     }
 
-    static class Triplet {
-        TreeSet<Integer> sortedVerticies = new TreeSet<>();
+    // http://www.geeksforgeeks.org/disjoint-set-data-structures-java-implementation/
+    static class DisjointSet
+    {
+        int[] rank, parent;
+        int n;
 
-        Triplet(int... vertices) {
-            for (int vertex: vertices) {
-                sortedVerticies.add(vertex);
-            }
+        // Constructor
+        public DisjointSet(int n)
+        {
+            rank = new int[n];
+            parent = new int[n];
+            this.n = n;
+            makeSet();
         }
 
         @Override
         public String toString() {
-            StringBuffer sb = new StringBuffer();
-            for (Integer vertex: sortedVerticies) {
-                sb.append(vertex + " ");
-            }
-            return sb.toString().trim();
-        }
-    }
-
-    static class Tree {
-        HashSet<Triplet> triplets = new HashSet<>();
-        private TreeMap<Integer, TreeSet<ColoredSegment>> startsWithColoredSegments = new TreeMap<>();
-        private TreeMap<Integer, TreeSet<Segment>> redContainingSegments = new TreeMap<>();
-
-        Tree(int vertices) {
-            for (int vertex = 1; vertex <= vertices; vertex++) {
-                startsWithColoredSegments.put(vertex, new TreeSet<ColoredSegment>());
-                redContainingSegments.put(vertex, new TreeSet<Segment>());
-            }
-        }
-
-        @Override
-        public String toString() {
-            return "Tree{" +
-                    "triplets=" + triplets +
-                    ", startsWithColoredSegments=" + startsWithColoredSegments +
-                    ", redContainingSegments=" + redContainingSegments +
+            return "DisjointSet{\n" +
+                    "\trank=" + Arrays.toString(rank) +
+                    ",\n\tparent=" + Arrays.toString(parent) +
+                    ",\n\tn=" + n +
                     '}';
         }
 
-        void addColoredSegment(int start, int end, char c) {
-            ColoredSegment coloredSegment = new ColoredSegment(start, end, c);
-            startsWithColoredSegments.get(start).add(coloredSegment);
-        }
-
-
-        void process() {
-            for (Integer startIndex: startsWithColoredSegments.keySet()) {
-                for (ColoredSegment startColoredSegment : startsWithColoredSegments.get(startIndex)) {
-                    followPath(startColoredSegment, startColoredSegment, false);
-                }
-            }
-            for (Integer startIndex: redContainingSegments.keySet()) {
-                for (Segment startSegment: redContainingSegments.get(startIndex)) {
-                    for (Segment endSegment: redContainingSegments.get(startSegment.end)) {
-                        triplets.add(new Triplet(startSegment.start, startSegment.end, endSegment.end));
-                    }
-                }
+        // Creates n sets with single item in each
+        void makeSet()
+        {
+            for (int i=0; i<n; i++)
+            {
+                // Initially, all elements are in
+                // their own set.
+                parent[i] = i;
             }
         }
 
-        private void followPath(ColoredSegment startingColoredSegment, ColoredSegment currentColoredSegment, boolean hasRedPart) {
-            hasRedPart = (hasRedPart || currentColoredSegment.color.equals(ColoredSegment.Color.RED));
-            if (hasRedPart) {
-                redContainingSegments.get(startingColoredSegment.start).add(
-                    new Segment(startingColoredSegment.start, currentColoredSegment.end)
-                );
+        // Returns representative of x's set
+        int find(int x) {
+            // Finds the representative of the set
+            // that x is an element of
+            if (parent[x]!=x)
+            {
+                // if x is not the parent of itself
+                // Then x is not the representative of
+                // his set,
+                parent[x] = find(parent[x]);
+
+                // so we recursively call Find on its parent
+                // and move i's node directly under the
+                // representative of this set
             }
 
-            TreeSet<ColoredSegment> nextColoredSegments = startsWithColoredSegments.get(currentColoredSegment.end);
-            for (ColoredSegment nextColoredSegment: nextColoredSegments) {
-                followPath(startingColoredSegment, nextColoredSegment, hasRedPart);
+            return parent[x];
+        }
+
+        // Unites the set that includes x and the set
+        // that includes x
+        void union(int x, int y) {
+            // Find representatives of two sets
+            int xRoot = find(x), yRoot = find(y);
+
+            // Elements are in the same set, no need
+            // to unite anything.
+            if (xRoot == yRoot)
+                return;
+
+            // If x's rank is less than y's rank
+            if (rank[xRoot] < rank[yRoot])
+
+                // Then move x under y  so that depth
+                // of tree remains less
+                parent[xRoot] = yRoot;
+
+                // Else if y's rank is less than x's rank
+            else if (rank[yRoot] < rank[xRoot])
+
+                // Then move y under x so that depth of
+                // tree remains less
+                parent[yRoot] = xRoot;
+
+            else // if ranks are the same
+            {
+                // Then move y under x (doesn't matter
+                // which one goes where)
+                parent[yRoot] = xRoot;
+
+                // And increment the the result tree's
+                // rank by 1
+                rank[xRoot] = rank[xRoot] + 1;
             }
-        }
-    }
-
-    static class ColoredSegment extends Segment {
-        Color color;
-
-        ColoredSegment(int start, int end, char c) {
-            super(start, end);
-            this.color = Color.BY_LETTER.get(c);
-        }
-
-        @Override
-        public String toString() {
-            return "Segment{" +
-                    "start=" + start +
-                    ", end=" + end +
-                    ", color=" + color +
-                    '}';
-        }
-
-        public enum Color {
-            RED('r'),
-            BLACK('b');
-
-            static final HashMap<Character, Color> BY_LETTER = new HashMap<>();
-            static {
-                for (Color color: Color.values()) {
-                    BY_LETTER.put(color.c, color);
-                }
-            }
-
-            char c;
-
-            Color(char c) {
-                this.c = c;
-            }
-        }
-    }
-
-    static class Segment implements Comparable<Segment> {
-        int start;
-        int end;
-
-        Segment(int start, int end) {
-            this.start = start;
-            this.end = end;
-        }
-
-        /**
-         * Look at start and then end
-         * @param o
-         * @return
-         */
-        @Override
-        public int compareTo(Segment o) {
-            if (equals(o)) return 0;
-            int startCompareTo = new Integer(start).compareTo(o.start);
-            if (startCompareTo != 0) return startCompareTo;
-            return new Integer(end).compareTo(o.end);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Segment that = (Segment) o;
-            return start == that.start &&
-                    end == that.end;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(start, end);
-        }
-
-        @Override
-        public String toString() {
-            return "Segment{" +
-                    "start=" + start +
-                    ", end=" + end +
-                    '}';
         }
     }
 }
