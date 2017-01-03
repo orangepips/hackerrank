@@ -17,6 +17,11 @@ public class TestSolution extends TestBase {
     }
 
     @Test
+    public void Test8() {
+        test(8);
+    }
+
+    @Test
     public void Test1000() {
         test(1000);
     }
