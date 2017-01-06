@@ -1,92 +1,50 @@
-package com.hackerrank.datastructures.disjointset.kunduandtree;
+package com.hackerrank.datastructures.disjointset.mergingcommunities;
 
 import java.io.InputStream;
-import java.lang.reflect.Array;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.*;
 
-// https://www.hackerrank.com/challenges/kundu-and-tree
 public class Solution {
     public static void main(String... args) {
         System.out.println(execute(System.in));
     }
 
-    /**
-     * Input Format
-     * The first line contains an integer N, i.e., the number of vertices in tree.
-     * The next N-1 lines represent edges: 2 space separated integers denoting an edge followed by a color of the edge.
-     * A color of an edge is denoted by a small letter of English alphabet, and it can be either red(r) or black(b).
-     * @param inputStream
-     * @return
-     */
     public static String execute(InputStream inputStream) {
-        BigInteger MAX = BigDecimal.valueOf(Math.pow(10, 9) + 7).toBigInteger();
-        char BLACK = 'b';
-        int k = 3;
-
         StringBuffer output = new StringBuffer();
         Scanner scanner = new Scanner(inputStream);
 
         int n = scanner.nextInt();
+        int q = scanner.nextInt();
 
-        // http://math.stackexchange.com/questions/838792/counting-triplets-with-red-edges-in-each-pair
-        DisjointSet verticesSetsWithBlackEdges = new DisjointSet(n + 1);
-        ArrayList<int []> segments = new ArrayList<>();
-        for (int i = 0; i < n - 1; i++) {
-            int start = scanner.nextInt();
-            int end = scanner.nextInt();
-            char c = scanner.next().charAt(0);
+        DisjointSet disjointSet = new DisjointSet(n + 1);
 
-            if (c == BLACK) {
-                verticesSetsWithBlackEdges.union(start, end);
+        for (int k = 0; k < q; k++) {
+            String query = scanner.next();
+            if (query.equals("Q")) {
+                int p = scanner.nextInt();
+                output.append(disjointSet.size(p) + (k == q - 1 ? "" : "\n"));
+            } else {
+                int i = scanner.nextInt();
+                int j = scanner.nextInt();
+                disjointSet.union(i, j);
             }
         }
 
-        ArrayList<Integer> blackEdgeTreeSizes = new ArrayList<Integer>();
-        int parents = verticesSetsWithBlackEdges.parent.length;
-        for (int j = 0; j < parents; j++) {
-            if (verticesSetsWithBlackEdges.parent[j] != j || verticesSetsWithBlackEdges.sz[j] < 2) continue;
-            blackEdgeTreeSizes.add(verticesSetsWithBlackEdges.sz[j]);
-        }
-
-        BigInteger tripletCount = binomial(n, k);
-        BigInteger badTripletCount = BigInteger.ZERO;
-        for (Integer blackEdgeTreeSize: blackEdgeTreeSizes) {
-            BigInteger thisBadTripletCount =
-            binomial(blackEdgeTreeSize, k).add(
-                binomial(blackEdgeTreeSize, k - 1).multiply(
-                    BigInteger.valueOf(n - blackEdgeTreeSize)
-                )
-            );
-            badTripletCount = badTripletCount.add(thisBadTripletCount);
-        }
-        tripletCount = tripletCount.subtract(badTripletCount);
-
-        tripletCount = tripletCount.mod(MAX);
-        output.append(tripletCount.toString());
         return output.toString();
     }
 
-    // http://stackoverflow.com/questions/2201113/combinatoric-n-choose-r-in-java-math
-    static BigInteger binomial(final int N, final int K) {
-        BigInteger ret = BigInteger.ONE;
-        for (int k = 0; k < K; k++) {
-            ret = ret.multiply(BigInteger.valueOf(N-k))
-                    .divide(BigInteger.valueOf(k+1));
-        }
-        return ret;
-    }
-
+    // http://www.geeksforgeeks.org/disjoint-set-data-structures-java-implementation/
+    // http://p-nand-q.com/python/data-types/general/disjoint-sets.html
+    // http://www.geeksforgeeks.org/disjoint-set-data-structures-java-implementation/
     static class DisjointSet
     {
-        int[] parent, cache, sz;
+        int[] rank, parent, cache, sz;
         int n;
         boolean done = false;
 
         // Constructor
         public DisjointSet(int n)
         {
+            rank = new int[n];
             parent = new int[n];
             cache = new int[n];
             sz = new int[n];
@@ -97,7 +55,7 @@ public class Solution {
         @Override
         public String toString() {
             return "DisjointSet{\n" +
-                    "\tsz=" + Arrays.toString(sz) +
+                    "\trank=" + Arrays.toString(rank) +
                     ",\n\tparent=" + Arrays.toString(parent) +
                     ",\n\tn=" + n +
                     '}';
@@ -160,7 +118,7 @@ public class Solution {
                 parent[xRoot] = yRoot;
                 sz[yRoot] += sz[xRoot];
             }
-            // Else if y's rank is less than x's rank
+                // Else if y's rank is less than x's rank
             else {
 
                 // Then move y under x so that depth of
