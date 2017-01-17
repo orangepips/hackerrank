@@ -9,12 +9,27 @@ import java.util.*;
 public class Solution {
     static TicTacToeBoard createTicTacToeBoard(InputStream inputStream) {
         Scanner scanner = new Scanner(inputStream);
-        char who = scanner.nextLine().toCharArray()[0];
+        String player;
+        String board[] = new String[3];
+
+        //If player is X, I'm the first player.
+        //If player is O, I'm the second player.
+        player = scanner.nextLine();
+
+        //Read the board now. The board is a 3x3 array filled with X, O or _.
+        for(int i = 0; i < 3; i++) {
+            board[i] = scanner.next();
+        }
+        return createTicTacToeBoard(player, board);
+    }
+
+    static TicTacToeBoard createTicTacToeBoard(String player, String [] board) {
+        char who = player.toCharArray()[0];
         TicTacToeBoard ticTacToeBoard = new TicTacToeBoard(who);
-        for (int x = 0; x < TicTacToeBoard.BOARD_SIZE; x++) {
-            char[] positions = scanner.nextLine().toCharArray();
-            for (int y = 0; y < TicTacToeBoard.BOARD_SIZE; y++) {
-                ticTacToeBoard.set(x, y, positions[y]);
+        for (int y = 0; y < board.length; y++) {
+            char[] positions = board[y].toCharArray();
+            for (int x = 0; x < TicTacToeBoard.BOARD_SIZE; x++) {
+                ticTacToeBoard.set(x, y, positions[x]);
             }
         }
         return ticTacToeBoard;
@@ -24,9 +39,9 @@ public class Solution {
         StringBuffer output = new StringBuffer();
 
         TicTacToeBoard ticTacToeBoard = createTicTacToeBoard(inputStream);
+        int[] nextMove = ticTacToeBoard.makeMove();
 
-        System.out.println(ticTacToeBoard);
-        System.out.println(ticTacToeBoard.calculateScore());
+        output.append(nextMove[1] + " " + nextMove[0]);
         return output.toString();
     }
 
@@ -34,15 +49,26 @@ public class Solution {
         System.out.println(execute(System.in));
     }
 
+    static void nextMove(String player, String [] board) {
+        TicTacToeBoard ticTacToeBoard = createTicTacToeBoard(player, board);
+        int[] nextMove = ticTacToeBoard.makeMove();
+        System.out.println(nextMove[1] + " " + nextMove[0]);
+    }
+
     public static void play() {
-        InputStream inputStream = new ByteArrayInputStream("X\n___\n___\n___".getBytes(StandardCharsets.UTF_8));
+        play("O\nX__\n___\n___");
+    }
+
+    public static void play(String input) {
+        InputStream inputStream = new ByteArrayInputStream(input.getBytes());
         TicTacToeBoard ticTacToeBoard = createTicTacToeBoard(inputStream);
         System.out.println(ticTacToeBoard);
-        while (!ticTacToeBoard.hasWinner() || !ticTacToeBoard.isComplete()) {
+        while (!ticTacToeBoard.hasWinner() && !ticTacToeBoard.isComplete()) {
+            System.out.println(Arrays.toString(ticTacToeBoard.board));
             System.out.println(Arrays.toString(ticTacToeBoard.makeMove()));
-            ticTacToeBoard.toggleWho();
-            System.out.println(ticTacToeBoard.isWinner('X'));
-            System.out.println(ticTacToeBoard.isWinner('O'));
+            ticTacToeBoard.toggleWhoseTurn();
+//            System.out.println(ticTacToeBoard.hasWinner());
+//            System.out.println(ticTacToeBoard.isComplete());
             System.out.println(ticTacToeBoard);
         }
     }
@@ -50,11 +76,15 @@ public class Solution {
     static class TicTacToeBoard {
         public static final int BOARD_SIZE = 3;
         public static final char EMPTY = '_';
-        public static final int WIN = 10;
+        public static final char X = 'X';
+        public static final char O = 'O';
+        public static final int WIN = 100;
+        public static final int TWOSIE = 10;
+        public static final int ONESIE = 1;
         public static final HashMap<Character, Integer> MARKER_TO_INT = new HashMap<Character, Integer>(){{
-            put('X', 1);
-            put('_', 0);
-            put('O', -1);
+            put(X, 1);
+            put(EMPTY, 0);
+            put(O, -1);
         }};
 
         public static final HashMap<Integer, Character> INT_TO_MARKER = new HashMap<Integer, Character>(){{
@@ -77,7 +107,10 @@ public class Solution {
             add(tuple(2, 4, 6));
         }};
 
-        char who;
+        char maximizingPlayerMarker;
+        char minimizingPlayerMaker;
+
+        char whoseTurn;
         int moves;
         /**
          * 0 1 2
@@ -88,8 +121,10 @@ public class Solution {
          */
         int[] board = new int[BOARD_SIZE * BOARD_SIZE];
 
-        public TicTacToeBoard(char who) {
-            this.who = who;
+        public TicTacToeBoard(char whoseTurn) {
+            this.whoseTurn = whoseTurn;
+            this.maximizingPlayerMarker = whoseTurn;
+            this.minimizingPlayerMaker = (whoseTurn == X ? O : X);
         }
 
         /**
@@ -97,8 +132,8 @@ public class Solution {
          * @param ticTacToeBoard
          */
         public TicTacToeBoard(TicTacToeBoard ticTacToeBoard) {
-            this.moves = moves;
-            this.who = who;
+            this.moves = ticTacToeBoard.moves;
+            this.whoseTurn = ticTacToeBoard.whoseTurn;
             for (int i = 0; i < ticTacToeBoard.board.length; i++) {
                 this.board[i] = ticTacToeBoard.board[i];
             }
@@ -121,17 +156,26 @@ public class Solution {
         }
 
         public int calculateScore() {
-            return calculateScore(who);
-        }
+            int score = 0;
+            HashMap<Character, HashSet<Integer>> playerMarkers = getPlayerMarkers();
 
-        public int calculateScore(char maxPlayerMarker) {
-            HashMap<Character, HashSet<Integer>> playerMarkers = getPlayerMarkers(maxPlayerMarker);
-            char minPlayerMarker = (maxPlayerMarker == 'X' ? 'O' : 'X');
             for (HashSet<Integer> WINNING_BOARD: WINNING_BOARDS) {
-                if (playerMarkers.get(maxPlayerMarker).containsAll(WINNING_BOARD) || playerMarkers.get(minPlayerMarker).containsAll(WINNING_BOARD))
-                    return WIN;
+                HashSet<Integer> maxPlayerMarkers = new HashSet<>(playerMarkers.get(maximizingPlayerMarker));
+                HashSet<Integer> minPlayerMarkers = new HashSet<>(playerMarkers.get(minimizingPlayerMaker));
+                HashSet<Integer> emptyMarkers = new HashSet<>(playerMarkers.get(EMPTY));
+                if (playerMarkers.get(maximizingPlayerMarker).containsAll(WINNING_BOARD)) { return WIN; }
+                else if (playerMarkers.get(minimizingPlayerMaker).containsAll(WINNING_BOARD)) { return -WIN; }
+                else {
+                    maxPlayerMarkers.retainAll(WINNING_BOARD);
+                    minPlayerMarkers.retainAll(WINNING_BOARD);
+                    emptyMarkers.retainAll(WINNING_BOARD);
+                    if (maxPlayerMarkers.size() == 1 && emptyMarkers.size() == 2) score += ONESIE;
+                    else if (minPlayerMarkers.size() == 1 && emptyMarkers.size() == 2) score -= ONESIE;
+                    else if (maxPlayerMarkers.size() == 2 && emptyMarkers.size() == 1) score += TWOSIE;
+                    else if (minPlayerMarkers.size() == 2 && emptyMarkers.size() == 1) score -= TWOSIE;
+                }
             }
-            return 0;
+            return score;
         }
 
         @Override
@@ -154,23 +198,25 @@ public class Solution {
             return availableMoves;
         }
 
-        public HashMap<Character, HashSet<Integer>> getPlayerMarkers(char maxPlayerMarker) {
-            char minPlayerMarker = (maxPlayerMarker == 'X' ? 'O' : 'X');
+        public HashMap<Character, HashSet<Integer>> getPlayerMarkers() {
             HashSet<Integer> maxPlayer = new HashSet<>();
             HashSet<Integer> minPlayer = new HashSet<>();
+            HashSet<Integer> empty = new HashSet<>();
             for (int i = 0; i < board.length; i++) {
                 char marker = INT_TO_MARKER.get(board[i]);
-                if (marker == maxPlayerMarker) maxPlayer.add(i);
-                else if (marker == (maxPlayerMarker == 'X' ? 'O' : 'X')) minPlayer.add(i);
+                if (marker == maximizingPlayerMarker) maxPlayer.add(i);
+                else if (marker == minimizingPlayerMaker) minPlayer.add(i);
+                else empty.add(i);
             }
             HashMap<Character, HashSet<Integer>> playerMarkers = new HashMap<>();
-            playerMarkers.put(maxPlayerMarker, maxPlayer);
-            playerMarkers.put(minPlayerMarker, minPlayer);
+            playerMarkers.put(maximizingPlayerMarker, maxPlayer);
+            playerMarkers.put(minimizingPlayerMaker, minPlayer);
+            playerMarkers.put(EMPTY, empty);
             return playerMarkers;
         }
 
         public boolean hasWinner() {
-            return isWinner('X') || isWinner('O');
+            return Math.abs(calculateScore()) == WIN;
         }
 
         @Override
@@ -182,23 +228,14 @@ public class Solution {
             return getAvailableMoves().size() == 0;
         }
 
-        public boolean isWinner() {
-            return isWinner(who);
-        }
-
-        public boolean isWinner(char playerMarker) {
-            return calculateScore(playerMarker) == WIN;
-        }
-
         public int[] makeMove() {
             int[] nextMove = minimax();
-            System.out.println(Arrays.toString(nextMove));
-            mark(nextMove[1], nextMove[2], who);
-            return nextMove;
+            mark(nextMove[1], nextMove[2], whoseTurn);
+            return new int[]{nextMove[1], nextMove[2]};
         }
 
         public void mark(int x, int y, char player) {
-            moves += 1;
+            moves += (player == EMPTY ? -1 : 1);
             board[xy2Int(x, y)] = MARKER_TO_INT.get(player);
         }
 
@@ -210,55 +247,78 @@ public class Solution {
         @Override
         public String toString() {
             StringBuffer sb = new StringBuffer();
-            StringBuffer tabsBuffer = new StringBuffer();
-            for (int i = 0; i < moves; i++) {
-                tabsBuffer.append("\t");
-            }
-            String tabs = tabsBuffer.toString();
-            sb.append(tabs + this.who + " " + moves + "\n");
-            for (int x = 0; x < BOARD_SIZE; x++) {
-                sb.append(tabs);
-                for (int y = 0; y < BOARD_SIZE; y++) {
+            sb.append(this.whoseTurn + " " + moves + "\n");
+            for (int y = 0; y < BOARD_SIZE; y++) {
+                for (int x = 0; x < BOARD_SIZE; x++) {
                     sb.append(get(x, y));
                 }
-                if (x == BOARD_SIZE - 1) continue;
+                if (y == BOARD_SIZE - 1) continue;
                 sb.append('\n');
             }
             return sb.toString();
         }
 
-        public char toggleWho() {
-            this.who = (who == 'X' ? 'O' : 'X');
-            return this.who;
+        public char toggleWhoseTurn() {
+            this.whoseTurn = (whoseTurn == X ? O : X);
+            this.maximizingPlayerMarker = whoseTurn;
+            this.minimizingPlayerMaker = (whoseTurn == X ? O : X);
+
+            return this.whoseTurn;
+        }
+
+        private int[] minimax() {
+            return minimax(Integer.MIN_VALUE, Integer.MAX_VALUE);
         }
 
         /**
          * https://www.ntu.edu.sg/home/ehchua/programming/java/JavaGame_TicTacToe_AI.html
          * @return {score, x, y}
          */
-        private int[] minimax() {
+        private int[] minimax(int alpha, int beta) {
             HashSet<int[]> availableMoves = getAvailableMoves();
 
-            int bestScore = WIN * (who == 'X' ? -1 : 1);
-            int currentScore;
-            int[] scoreAndBestMove = new int[] {0, -1, -1};
+            int score;
+            int bestRow = -1;
+            int bestCol = -1;
+
+            if (availableMoves.size() == 9) {
+                return new int[] {calculateScore(), 1, 1};
+            }
 
             if (availableMoves.size() == 0 || hasWinner()) {
-                int score = calculateScore() ;
-                //scoreAndBestMove[0] = score + (who == 'X' ? -moves : moves);
-                return scoreAndBestMove;
+                score = calculateScore();
+                // System.out.println("minimax > score:\t" + score);
+                return new int[] {score, bestRow, bestCol};
             }
 
             for (int[] availableMove: availableMoves) {
-                TicTacToeBoard ticTacToeBoard = new TicTacToeBoard(this);
-                ticTacToeBoard.mark(availableMove[0], availableMove[1], who);
-                ticTacToeBoard.toggleWho();
-                currentScore = ticTacToeBoard.minimax()[0];
-                if (currentScore > bestScore) {
-                    scoreAndBestMove = new int[] {currentScore, availableMove[0], availableMove[1]};
+                toggleWhoseTurn();
+                mark(availableMove[0], availableMove[1], whoseTurn);
+                score = minimax(alpha, beta)[0];
+                // System.out.println(depth + " " + score + " " + alpha + " " + beta + " " + Arrays.toString(availableMove) + " " + whoseTurn);
+                toggleWhoseTurn();
+
+                if (whoseTurn == maximizingPlayerMarker) {
+                    score -= moves;
+                    if (score > alpha) {
+                        alpha = score;
+                        bestRow = availableMove[0];
+                        bestCol = availableMove[1];
+                    }
+                } else {
+                    score += moves;
+                    if (score < beta) {
+                        beta = score;
+                        bestRow = availableMove[0];
+                        bestCol = availableMove[1];
+                    }
                 }
+
+                mark(availableMove[0], availableMove[1], EMPTY);
+                if (alpha >= beta) break;
             }
-            return scoreAndBestMove;
+            //System.out.println(moves + " " + (whoseTurn == maximizingPlayerMarker ? alpha : beta) + " [" + bestRow + ", " + bestCol + "]");
+            return new int[] {(whoseTurn == maximizingPlayerMarker ? alpha : beta), bestRow, bestCol};
         }
     }
 }
