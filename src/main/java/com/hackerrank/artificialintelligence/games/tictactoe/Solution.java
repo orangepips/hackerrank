@@ -55,22 +55,22 @@ public class Solution {
         System.out.println(nextMove[1] + " " + nextMove[0]);
     }
 
-    public static void play() {
-        play("O\nX__\n___\n___");
-    }
-
-    public static void play(String input) {
+    public static TicTacToeBoard play(String input) {
         InputStream inputStream = new ByteArrayInputStream(input.getBytes());
         TicTacToeBoard ticTacToeBoard = createTicTacToeBoard(inputStream);
         System.out.println(ticTacToeBoard);
-        while (!ticTacToeBoard.hasWinner() && !ticTacToeBoard.isComplete()) {
-            System.out.println(Arrays.toString(ticTacToeBoard.board));
+        System.out.println("Max: " + ticTacToeBoard.maximizingPlayerMarker + "\tMin: " + ticTacToeBoard.minimizingPlayerMaker);
+        while (true) {
             System.out.println(Arrays.toString(ticTacToeBoard.makeMove()));
             ticTacToeBoard.toggleWhoseTurn();
-//            System.out.println(ticTacToeBoard.hasWinner());
-//            System.out.println(ticTacToeBoard.isComplete());
+            input = ticTacToeBoard.toString();
+            inputStream = new ByteArrayInputStream(input.getBytes());
+            ticTacToeBoard = createTicTacToeBoard(inputStream);
             System.out.println(ticTacToeBoard);
-        }
+            System.out.println("Max: " + ticTacToeBoard.maximizingPlayerMarker + "\tMin: " + ticTacToeBoard.minimizingPlayerMaker);
+            if (ticTacToeBoard.hasWinner() || ticTacToeBoard.isComplete()) break;
+         }
+         return ticTacToeBoard;
     }
 
     static class TicTacToeBoard {
@@ -132,8 +132,8 @@ public class Solution {
          * @param ticTacToeBoard
          */
         public TicTacToeBoard(TicTacToeBoard ticTacToeBoard) {
+            this(ticTacToeBoard.whoseTurn);
             this.moves = ticTacToeBoard.moves;
-            this.whoseTurn = ticTacToeBoard.whoseTurn;
             for (int i = 0; i < ticTacToeBoard.board.length; i++) {
                 this.board[i] = ticTacToeBoard.board[i];
             }
@@ -156,23 +156,33 @@ public class Solution {
         }
 
         public int calculateScore() {
+            String uuid = UUID.randomUUID().toString();
             int score = 0;
             HashMap<Character, HashSet<Integer>> playerMarkers = getPlayerMarkers();
 
             for (HashSet<Integer> WINNING_BOARD: WINNING_BOARDS) {
-                HashSet<Integer> maxPlayerMarkers = new HashSet<>(playerMarkers.get(maximizingPlayerMarker));
-                HashSet<Integer> minPlayerMarkers = new HashSet<>(playerMarkers.get(minimizingPlayerMaker));
-                HashSet<Integer> emptyMarkers = new HashSet<>(playerMarkers.get(EMPTY));
-                if (playerMarkers.get(maximizingPlayerMarker).containsAll(WINNING_BOARD)) { return WIN; }
-                else if (playerMarkers.get(minimizingPlayerMaker).containsAll(WINNING_BOARD)) { return -WIN; }
-                else {
-                    maxPlayerMarkers.retainAll(WINNING_BOARD);
-                    minPlayerMarkers.retainAll(WINNING_BOARD);
-                    emptyMarkers.retainAll(WINNING_BOARD);
-                    if (maxPlayerMarkers.size() == 1 && emptyMarkers.size() == 2) score += ONESIE;
-                    else if (minPlayerMarkers.size() == 1 && emptyMarkers.size() == 2) score -= ONESIE;
-                    else if (maxPlayerMarkers.size() == 2 && emptyMarkers.size() == 1) score += TWOSIE;
-                    else if (minPlayerMarkers.size() == 2 && emptyMarkers.size() == 1) score -= TWOSIE;
+//                HashSet<Integer> maxPlayerMarkers = new HashSet<>(playerMarkers.get(maximizingPlayerMarker));
+//                HashSet<Integer> minPlayerMarkers = new HashSet<>(playerMarkers.get(minimizingPlayerMaker));
+//                HashSet<Integer> emptyMarkers = new HashSet<>(playerMarkers.get(EMPTY));
+//                if (playerMarkers.get(maximizingPlayerMarker).containsAll(WINNING_BOARD)) {
+//                    score += WIN;
+//                }
+//                else if (playerMarkers.get(minimizingPlayerMaker).containsAll(WINNING_BOARD)) {
+//                    score += -WIN;
+//                }
+//                else {
+//                    maxPlayerMarkers.retainAll(WINNING_BOARD);
+//                    minPlayerMarkers.retainAll(WINNING_BOARD);
+//                    emptyMarkers.retainAll(WINNING_BOARD);
+//                    if (maxPlayerMarkers.size() == 1 && emptyMarkers.size() == 2) score += ONESIE;
+//                    else if (minPlayerMarkers.size() == 1 && emptyMarkers.size() == 2) score -= ONESIE;
+//                    else if (maxPlayerMarkers.size() == 2 && emptyMarkers.size() == 1) score += TWOSIE;
+//                    else if (minPlayerMarkers.size() == 2 && emptyMarkers.size() == 1) score -= TWOSIE;
+//                }
+                if (playerMarkers.get(maximizingPlayerMarker).containsAll(WINNING_BOARD)) {
+                    return 1;
+                } else if (playerMarkers.get(minimizingPlayerMaker).containsAll(WINNING_BOARD)) {
+                    return - 1;
                 }
             }
             return score;
@@ -216,7 +226,15 @@ public class Solution {
         }
 
         public boolean hasWinner() {
-            return Math.abs(calculateScore()) == WIN;
+            return isWinner(X) || isWinner(O);
+        }
+
+        public boolean isWinner(char playerMarker) {
+            HashMap<Character, HashSet<Integer>> playerMarkers = getPlayerMarkers();
+            for (HashSet<Integer> WINNING_BOARD: WINNING_BOARDS) {
+                if (playerMarkers.get(playerMarker).containsAll(WINNING_BOARD)) return true;
+            }
+            return false;
         }
 
         @Override
@@ -229,9 +247,19 @@ public class Solution {
         }
 
         public int[] makeMove() {
-            int[] nextMove = minimax();
-            mark(nextMove[1], nextMove[2], whoseTurn);
-            return new int[]{nextMove[1], nextMove[2]};
+//            int[] nextMove = minimax();
+//            mark(nextMove[1], nextMove[2], whoseTurn);
+//            return new int[]{nextMove[1], nextMove[2]};
+//            int [] nextMove = getBestRedditMove();
+//            System.out.println("nextMove: " + Arrays.toString(nextMove) + "\twhoseTurn: " + whoseTurn);
+//            mark(nextMove[0], nextMove[1], whoseTurn);
+//            return new int[]{nextMove[0], nextMove[1]};
+            int[] nextMoveAndScore = neverStopBuilding(this, whoseTurn, moves, -1);
+            System.out.println(Arrays.toString(nextMoveAndScore));
+            int[] nextMove = int2xy(nextMoveAndScore[0]);
+            System.out.println(Arrays.toString(nextMove));
+            mark(nextMove[0], nextMove[1], whoseTurn);
+            return new int[]{nextMove[0], nextMove[1]};
         }
 
         public void mark(int x, int y, char player) {
@@ -247,7 +275,13 @@ public class Solution {
         @Override
         public String toString() {
             StringBuffer sb = new StringBuffer();
-            sb.append(this.whoseTurn + " " + moves + "\n");
+            sb.append(this.whoseTurn + "\n");
+            sb.append(getBoard());
+            return sb.toString();
+        }
+
+        public String getBoard() {
+            StringBuffer sb = new StringBuffer();
             for (int y = 0; y < BOARD_SIZE; y++) {
                 for (int x = 0; x < BOARD_SIZE; x++) {
                     sb.append(get(x, y));
@@ -259,65 +293,180 @@ public class Solution {
         }
 
         public char toggleWhoseTurn() {
+            return toggleWhoseTurn(Boolean.FALSE);
+        }
+
+        public char toggleWhoseTurn(boolean swapMinAndMax) {
             this.whoseTurn = (whoseTurn == X ? O : X);
-            this.maximizingPlayerMarker = whoseTurn;
-            this.minimizingPlayerMaker = (whoseTurn == X ? O : X);
+            if (swapMinAndMax) {
+                this.maximizingPlayerMarker = whoseTurn;
+                this.minimizingPlayerMaker = (whoseTurn == X ? O : X);
+            }
 
             return this.whoseTurn;
         }
 
+//        def value(grid, player, move):
+//                """Recursive depth first search following Negamax algorithm."""
+//                    grid = grid[:]
+//                    grid[move] = player
+//                if winner(grid, player):
+//                        return 2
+//                if grid.count(blank) == 0:
+//                        return 1
+//                    values = []
+//                            for i in range(9):
+//                            if grid[i] == blank:
+//                            values.append(value(grid, -player, i))
+//                            # assume the opponent's best move (max) and reverse it.
+//                            return 2-max(values)
+
+
+//        http://neverstopbuilding.com/minimax
+        private int[] neverStopBuilding(TicTacToeBoard currentTicTacToeBoard, char player, int depth, int move) {
+            if (currentTicTacToeBoard.isComplete() || hasWinner()) {
+                return new int[] {move, neverStopBuildingScore(currentTicTacToeBoard, player, depth)};
+            }
+            HashSet<int[]> availableMoves = currentTicTacToeBoard.getAvailableMoves();
+            depth += 1;
+            ArrayList<Integer> scores = new ArrayList<>();
+            ArrayList<Integer> moves = new ArrayList<>();
+            for (int[] availableMove: availableMoves) {
+                TicTacToeBoard nextTicTacToeBoard = new TicTacToeBoard(currentTicTacToeBoard);
+                nextTicTacToeBoard.mark(availableMove[0], availableMove[1], player);
+                int[] neverStopBuildingResult = nextTicTacToeBoard.neverStopBuilding(nextTicTacToeBoard, player, depth, xy2Int(availableMove[0], availableMove[1]));
+                scores.add(neverStopBuildingResult[1]);
+                moves.add(neverStopBuildingResult[0]);
+            }
+
+            int score = (currentTicTacToeBoard.whoseTurn == maximizingPlayerMarker ? Collections.max(scores) : Collections.min(scores));
+
+            int scoreIndex = scores.indexOf(score);
+            int nextMove = moves.get(scoreIndex);
+
+            return new int[] {nextMove, scoreIndex};
+        }
+
+        private int neverStopBuildingScore(TicTacToeBoard currentTicTacToeBoard, char player, int depth) {
+            if (currentTicTacToeBoard.isWinner(player)) {
+                return 10 - depth;
+            } else if (currentTicTacToeBoard.isWinner((player == X ? O : X))) {
+                return depth - 10;
+            } else {
+                return 0;
+            }
+        }
+
+        //        https://www.reddit.com/r/learnpython/comments/20mc2p/find_the_fallacy_in_my_tictactoe_game_minimax/
+        private int[] getBestRedditMove() {
+            HashSet<int[]> availableMoves = getAvailableMoves();
+            int[] bestMove;
+            int move = 0;
+            int[] boardCopy = new int[board.length];
+            System.arraycopy(board, 0, boardCopy, 0, board.length);
+            for (int[] availableMove: availableMoves) {
+                move = Math.max(move, redditMove(boardCopy, whoseTurn, xy2Int(availableMove[0], availableMove[1])));
+            }
+            return int2xy(move);
+        }
+
+        private int redditMove(int[] board, char player, int move) {
+            board[move] = MARKER_TO_INT.get(player);
+            if (isWinner(player)) {
+                return 2;
+            }
+            if (isComplete()) {
+                return 0;
+            }
+            ArrayList<Integer> values = new ArrayList<>();
+            for (int i = 0; i < board.length; i++) {
+                if (board[i] == EMPTY) {
+                    char nextPlayer = (player == X ? O : X);
+                    values.add(redditMove(board, nextPlayer, i));
+                }
+            }
+            return 2 - (values.size() > 0 ? Collections.max(values) : 0);
+        }
+
+        int currentMove;
         private int[] minimax() {
-            return minimax(Integer.MIN_VALUE, Integer.MAX_VALUE);
+            currentMove = moves;
+            return minimax(maximizingPlayerMarker, Integer.MIN_VALUE, Integer.MAX_VALUE);
         }
 
         /**
          * https://www.ntu.edu.sg/home/ehchua/programming/java/JavaGame_TicTacToe_AI.html
          * @return {score, x, y}
          */
-        private int[] minimax(int alpha, int beta) {
+        private int[] minimax(char who, int alpha, int beta) {
             HashSet<int[]> availableMoves = getAvailableMoves();
 
             int score;
             int bestRow = -1;
             int bestCol = -1;
 
-            if (availableMoves.size() == 9) {
-                return new int[] {calculateScore(), 1, 1};
-            }
-
             if (availableMoves.size() == 0 || hasWinner()) {
                 score = calculateScore();
-                // System.out.println("minimax > score:\t" + score);
                 return new int[] {score, bestRow, bestCol};
             }
 
+            int bestImmediateScore = 0;
+            HashSet<int[]> bestMoves = new HashSet<>();
             for (int[] availableMove: availableMoves) {
-                toggleWhoseTurn();
                 mark(availableMove[0], availableMove[1], whoseTurn);
-                score = minimax(alpha, beta)[0];
-                // System.out.println(depth + " " + score + " " + alpha + " " + beta + " " + Arrays.toString(availableMove) + " " + whoseTurn);
+                //System.out.println(whoseTurn + " " + moves % 2);
+                int immediateScore = calculateScore();
                 toggleWhoseTurn();
 
-                if (whoseTurn == maximizingPlayerMarker) {
-                    score -= moves;
-                    if (score > alpha) {
+                if (who == maximizingPlayerMarker) {
+                    score = minimax(minimizingPlayerMaker, alpha, beta)[0];
+                    if (score >= alpha) {
+                        bestMoves.add(new int[]{100, score, alpha, availableMove[0], availableMove[1], bestImmediateScore, immediateScore});
+                    }
+                    //score -= moves;
+                    if (score > alpha || (score >= alpha && bestImmediateScore < immediateScore) || immediateScore >= WIN) {
                         alpha = score;
                         bestRow = availableMove[0];
                         bestCol = availableMove[1];
+                        bestImmediateScore = immediateScore;
+                        if (immediateScore >= WIN) {
+                            mark(availableMove[0], availableMove[1], EMPTY);
+                            toggleWhoseTurn();
+                            break;
+                        }
                     }
                 } else {
-                    score += moves;
-                    if (score < beta) {
+                    score = minimax(maximizingPlayerMarker, alpha, beta)[0];
+                    if (score <= beta) {
+                        bestMoves.add(new int[]{-100, score, beta, availableMove[0], availableMove[1], bestImmediateScore, immediateScore});
+                    }
+                    //score += moves;
+                    if (score < beta || (score <= beta && bestImmediateScore > immediateScore) || immediateScore <= -WIN) {
                         beta = score;
                         bestRow = availableMove[0];
                         bestCol = availableMove[1];
+                        bestImmediateScore = immediateScore;
+                        if (immediateScore <= -WIN) {
+                            mark(availableMove[0], availableMove[1], EMPTY);
+                            toggleWhoseTurn();
+                            break;
+                        }
                     }
                 }
 
                 mark(availableMove[0], availableMove[1], EMPTY);
+                toggleWhoseTurn();
+
                 if (alpha >= beta) break;
             }
-            //System.out.println(moves + " " + (whoseTurn == maximizingPlayerMarker ? alpha : beta) + " [" + bestRow + ", " + bestCol + "]");
+
+            if (moves == currentMove) {
+                System.out.println(moves + 1 + " " + maximizingPlayerMarker + " " + whoseTurn + " " + (whoseTurn == maximizingPlayerMarker));
+                for (int[] bestMove : bestMoves) {
+                    System.out.println(Arrays.toString(bestMove));
+                }
+            }
+
             return new int[] {(whoseTurn == maximizingPlayerMarker ? alpha : beta), bestRow, bestCol};
         }
     }

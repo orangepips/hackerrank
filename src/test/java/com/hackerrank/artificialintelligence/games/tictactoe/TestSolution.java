@@ -4,8 +4,7 @@ import com.hackerrank.TestBase;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -45,38 +44,106 @@ public class TestSolution extends TestBase {
     }
 
     @Test
-    public void TestPlay() {
-        Solution.play();
-    }
-
-    @Test
-    public void TestPlayXOO_O11_X22() {
-        Solution.play("O\nX__\n_O_\n__X");
-    }
-
-    @Test
-    public void TestPlayX00_O01_X10() {
-        Solution.play("O\nXO_\nXXO\nO__");
-    }
-
-    @Test
-    public void TestPlayBlank() {
-        Solution.play("X\n___\n___\n___");
-    }
-
-    @Test
     public void TestExecute() {
         System.out.println(Solution.execute(new ByteArrayInputStream("X\n___\n___\n___".getBytes())));
     }
 
     @Test
-    public void TestNextMoveBlank() {
+    public void TestNextMoveStartX() throws UnsupportedEncodingException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+        System.setOut(ps);
         Solution.nextMove("X", new String[] {"___", "___", "___"});
+        Assert.assertEquals("1 1\n", baos.toString("UTF-8"));
+    }
+
+    // https://www.quora.com/Is-there-a-way-to-never-lose-at-Tic-Tac-Toe
+    @Test
+    public void TestNextMoveXCenterOEdgeEnsureXCorner() throws UnsupportedEncodingException {
+        // Y X format
+        String[] edges = new String[] {"0 1", "1 0", "1 2", "2 1"};
+        String[] corners = new String[] {"[0, 0]", "[0, 2]", "[2, 0]", "[2, 2]"};
+
+        for (String edge: edges) {
+            String[] coords = edge.split(" ");
+            Solution.TicTacToeBoard ticTacToeBoard = Solution.createTicTacToeBoard("X", new String[]{"___", "_X_", "___"});
+            ticTacToeBoard.mark(new Integer(coords[1]), new Integer(coords[0]), ticTacToeBoard.O);
+            int[] nextMove = ticTacToeBoard.makeMove();
+            Assert.assertTrue(ticTacToeBoard.toString(),Arrays.binarySearch(corners, Arrays.toString(nextMove)) > -1);
+
+            ticTacToeBoard.toggleWhoseTurn();
+            Solution.TicTacToeBoard ticTacToeBoardPlayed = Solution.play(ticTacToeBoard.toString());
+            Assert.assertTrue(ticTacToeBoardPlayed.toString(), ticTacToeBoardPlayed.isWinner('X'));
+        }
     }
 
     @Test
-    public void TestNextMove1000() {
-        Solution.nextMove("O", new String[] {"___", "OXX", "_XO"});
+    public void TestNextMoveXCenterOCorner() throws UnsupportedEncodingException {
+        // Y X format
+        String[] corners = new String[] {"0 0", "0 2", "2 0", "2 2"};
+
+        for (String corner: corners) {
+            String[] coords = corner.split(" ");
+            Solution.TicTacToeBoard ticTacToeBoard = Solution.createTicTacToeBoard("X", new String[]{"___", "_X_", "___"});
+            ticTacToeBoard.mark(new Integer(coords[1]), new Integer(coords[0]), ticTacToeBoard.O);
+            ticTacToeBoard.makeMove();
+            ticTacToeBoard.toggleWhoseTurn();
+            Solution.TicTacToeBoard ticTacToeBoardPlayed = Solution.play(ticTacToeBoard.toString());
+            Assert.assertFalse(ticTacToeBoardPlayed.toString(), ticTacToeBoardPlayed.hasWinner());
+        }
+    }
+
+    @Test
+    public void TestNextMoveOCenterEnsureXCorner() {
+        String[] corners = new String[] {"[0, 0]", "[0, 2]", "[2, 0]", "[2, 2]"};
+        Solution.TicTacToeBoard ticTacToeBoard = Solution.createTicTacToeBoard("X", new String[]{"___", "_O_", "___"});
+        int[] nextMove = ticTacToeBoard.makeMove();
+        Assert.assertTrue(ticTacToeBoard.toString(),Arrays.binarySearch(corners, Arrays.toString(nextMove)) > -1);
+
+        ticTacToeBoard.toggleWhoseTurn();
+        Solution.TicTacToeBoard ticTacToeBoardPlayed = Solution.play(ticTacToeBoard.toString());
+        Assert.assertFalse(ticTacToeBoardPlayed.toString(), ticTacToeBoardPlayed.hasWinner());
+    }
+
+    @Test
+    public void TestNextMoveOCornerEnsureXCenter() {
+        // Y X format
+        String[] corners = new String[] {"0 0", "0 2", "2 0", "2 2"};
+
+        for (String corner: corners) {
+            String[] coords = corner.split(" ");
+            Solution.TicTacToeBoard ticTacToeBoard = Solution.createTicTacToeBoard("O", new String[]{"___", "___", "___"});
+            ticTacToeBoard.mark(new Integer(coords[1]), new Integer(coords[0]), ticTacToeBoard.O);
+            ticTacToeBoard.toggleWhoseTurn(Boolean.TRUE);
+            int[] nextMove = ticTacToeBoard.makeMove();
+            Assert.assertArrayEquals(ticTacToeBoard.toString(), nextMove, new int[] {1,1});
+
+            ticTacToeBoard.toggleWhoseTurn();
+            Solution.TicTacToeBoard ticTacToeBoardPlayed = Solution.play(ticTacToeBoard.toString());
+            Assert.assertFalse(ticTacToeBoardPlayed.toString(), ticTacToeBoardPlayed.hasWinner());
+        }
+    }
+
+    @Test
+    public void TestNextMoveOEdgeEnsureXAdjacentEdge() {
+        String[] edges = new String[] {"0 1", "1 0", "1 2", "2 1"};
+        String[] corners = new String[] {"[0, 0]", "[0, 2]", "[2, 0]", "[2, 2]"};
+        for (String edge: edges) {
+            String[] coords = edge.split(" ");
+            Solution.TicTacToeBoard ticTacToeBoard = Solution.createTicTacToeBoard("O", new String[]{"___", "___", "___"});
+            int x = new Integer(coords[1]);
+            int y = new Integer(coords[0]);
+            ticTacToeBoard.mark(x, y, ticTacToeBoard.O);
+            ticTacToeBoard.toggleWhoseTurn();
+            int[] nextMove = ticTacToeBoard.makeMove();
+            System.out.println("nextMove:\t" + Arrays.toString(nextMove) + "\t" + Arrays.binarySearch(corners, Arrays.toString(nextMove)));
+            Assert.assertTrue(ticTacToeBoard.toString(), (nextMove[0] == x || nextMove[1] == y)
+                    && (Arrays.binarySearch(corners, Arrays.toString(nextMove)) > -1));
+
+            ticTacToeBoard.toggleWhoseTurn();
+            Solution.TicTacToeBoard ticTacToeBoardPlayed = Solution.play(ticTacToeBoard.toString());
+            Assert.assertFalse(ticTacToeBoardPlayed.toString(), ticTacToeBoardPlayed.hasWinner());
+        }
     }
 
     @Test
@@ -86,15 +153,11 @@ public class TestSolution extends TestBase {
 
         Solution.TicTacToeBoard ticTacToeBoardB = Solution.createTicTacToeBoard(getInput(2001));
         Assert.assertTrue(ticTacToeBoardB.isComplete());
-//        Assert.assertFalse(ticTacToeBoardB.isWinner('O'));
-//        Assert.assertFalse(ticTacToeBoardB.isWinner('X'));
     }
 
     @Test
     public void TestIsWinner() {
         Solution.TicTacToeBoard ticTacToeBoard = Solution.createTicTacToeBoard(getInput(2000));
-//        Assert.assertFalse(ticTacToeBoard.isWinner());
-//        Assert.assertTrue(ticTacToeBoard.isWinner('X'));
     }
 
     @Test
@@ -105,5 +168,12 @@ public class TestSolution extends TestBase {
     @Override
     public String execute(InputStream inputStream) {
         return Solution.execute(inputStream);
+    }
+
+    private ByteArrayOutputStream rerouteSysOut() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+        System.setOut(ps);
+        return baos;
     }
 }
